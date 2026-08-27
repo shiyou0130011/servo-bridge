@@ -1,9 +1,9 @@
 name: Build .so of Servofor Linux
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
+  # push:
+  #   branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
