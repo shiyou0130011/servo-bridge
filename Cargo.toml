@@ -1,0 +1,8 @@
+[lib]
+name = "my_servo_bridge"
+crate-type = ["cdylib"]
+
+[dependencies]
+servo = "0.1" # 依賴官方的嵌入式 servo crate
+surfman = "0.6" # 視平台而定，用來處理渲染上下文
+raw-window-handle = "0.6" # 接收外部 GUI 的視窗代辦
