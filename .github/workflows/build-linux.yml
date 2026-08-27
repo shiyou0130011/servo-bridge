@@ -1,0 +1,36 @@
+name: Build .so of Servofor Linux
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 注意：
+    # 因為 Servo/Webrender 在 Linux 上編譯時通常高度相依於系統的圖形與開發庫（如 OpenGL、Wayland/X11 相關標頭檔），
+    # 所以在 Linux 的 GitHub Actions 環境中，我們需要在編譯前透過 apt-get 安裝必要的相依套件。
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev libfontconfig1-dev libx11-dev
+
+    - name: Set up Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+
+    - name: Build Release so
+      run: cargo build --release
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: servo-bridge-linux-so
+        path: target/release/*.so
