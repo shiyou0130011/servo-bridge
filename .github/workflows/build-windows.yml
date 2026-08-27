@@ -1,8 +1,8 @@
-name: Build .dll of Servo for Windows
+name: Build Servo bridge for Windows
 
 on:
-  # push:
-  #   branches: [ main, master ]
+  push:
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -16,13 +16,16 @@ jobs:
     - name: Set up Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
+        toolchain: 1.97.1
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
 
     - name: Build Release DLL
-      run: cargo build --release
+      run: cargo build --release --lib
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: servo-bridge-windows-dll
-        path: target/release/*.dll
+        path: target/release/servo_bridge.dll

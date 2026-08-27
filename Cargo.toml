@@ -1,8 +1,14 @@
+[package]
+name = "servo-lib"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+description = "提供給外部程式使用的 Servo C ABI 橋接函式庫"
+
 [lib]
-name = "my_servo_bridge"
+name = "servo_bridge"
 crate-type = ["cdylib"]
 
 [dependencies]
-servo = "0.1" # 依賴官方的嵌入式 servo crate
-surfman = "0.6" # 視平台而定，用來處理渲染上下文
-raw-window-handle = "0.6" # 接收外部 GUI 的視窗代辦
+# 官方 Servo 並沒有可直接使用的 0.1 crates.io 套件，改用固定版本的官方原始碼。
+servo = { git = "https://github.com/servo/servo.git", rev = "c038a19febfd7ab687de71caf04cfe180462b70f", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }

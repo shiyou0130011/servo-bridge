@@ -1,8 +1,8 @@
-name: Build .so of Servofor Linux
+name: Build Servo bridge for Linux
 
 on:
-  # push:
-  #   branches: [ main, master ]
+  push:
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -19,18 +19,21 @@ jobs:
     - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1-mesa-dev libfontconfig1-dev libx11-dev
+        sudo apt-get install -y libgl1-mesa-dev libfontconfig1-dev libx11-dev libx11-xcb-dev libxcb1-dev libxcb-shm0-dev libxcb-render0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-randr0-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev libwayland-dev libegl1-mesa-dev libgles2-mesa-dev
 
     - name: Set up Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
+        toolchain: 1.97.1
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
 
     - name: Build Release so
-      run: cargo build --release
+      run: cargo build --release --lib
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: servo-bridge-linux-so
-        path: target/release/*.so
+        path: target/release/libservo_bridge.so

@@ -1,5 +1,8 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::os::raw::c_char;
+
+// 確保 Servo 引擎被納入動態函式庫的相依建置。
+use servo as _;
 
 // ==========================================
 // 1. 定義對外公開的結構體指標 (Opaque Pointer)
