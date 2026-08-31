@@ -20,7 +20,7 @@ pub struct ServoWebView {
 
 /// 建立一個新的 WebView 實例
 #[no_mangle]
-pub extern "C" fn servo_webview_new() *mut ServoWebView {
+pub extern "C" fn servo_webview_new() -> *mut ServoWebView {
     let webview = ServoWebView {
         url: String::from("about:blank"),
     };
