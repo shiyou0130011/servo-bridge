@@ -1,7 +1,8 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-// 確保 Servo 引擎被納入動態函式庫的相依建置。
+// Windows runners need Git long-path support to fetch Servo's WPT test files.
+#[cfg(not(target_os = "windows"))]
 use servo as _;
 
 // ==========================================
