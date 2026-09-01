@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     # 注意：
     # 因為 Servo/Webrender 在 Linux 上編譯時通常高度相依於系統的圖形與開發庫（如 OpenGL、Wayland/X11 相關標頭檔），
@@ -33,7 +33,7 @@ jobs:
       run: cargo build --release --lib
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: servo-bridge-linux-so
         path: target/release/libservo_bridge.so
