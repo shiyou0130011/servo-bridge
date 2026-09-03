@@ -8,6 +8,11 @@
 `ServoWebView` 指標，並更新其 URL。`servo_webview_load_url` 目前會記錄載入的
 URL；實際的 Servo 視窗、渲染與事件迴圈尚未接入。
 
+固定 Servo commit 的 embedding API 調查結果請參閱
+[`docs/servo-embedding-api.md`](docs/servo-embedding-api.md)。下一步應先以
+`SoftwareRenderingContext` 完成 Rust 端 headless framebuffer prototype，再
+設計供 Go/Ebiten 使用的 C ABI。
+
 ## 編譯
 
 官方 Servo 目前要求 Rust `1.97.1`。在已安裝 Rust 與 Cargo 的環境執行：
