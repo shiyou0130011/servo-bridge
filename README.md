@@ -1,6 +1,6 @@
-# servo-lib
+# servo-bridge
 
-`servo-lib` 是一個以 Rust 撰寫的 C ABI 橋接函式庫。專案將固定版本的
+本專案是一個以 Rust 撰寫的 C ABI 橋接函式庫。專案將固定版本的
 [Servo](https://github.com/servo/servo) 引擎納入建置，並輸出可由其他語言載入的
 動態函式庫，讓 C/C++、Go、C#、Python 等程式可以透過 FFI 呼叫 Rust 函式。
 
