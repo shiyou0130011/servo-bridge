@@ -42,8 +42,13 @@ git config --global core.longpaths true
 ```c
 typedef struct ServoWebView ServoWebView;
 
-ServoWebView *servo_webview_new(void);
-void servo_webview_load_url(ServoWebView *webview, const char *url);
+ServoWebView *servo_webview_new(uint32_t width, uint32_t height);
+int32_t servo_webview_load_url(ServoWebView *webview, const char *url);
+int32_t servo_webview_update(ServoWebView *webview);
+int32_t servo_webview_render(ServoWebView *webview, uint8_t *output, uintptr_t output_len);
+uint32_t servo_webview_width(const ServoWebView *webview);
+uint32_t servo_webview_height(const ServoWebView *webview);
+const char *servo_webview_last_error(const ServoWebView *webview);
 void servo_webview_free(ServoWebView *webview);
 ```
 
@@ -85,7 +90,7 @@ var (
 )
 
 func newWebView() unsafe.Pointer {
-	ret, _, callErr := newProc.Call()
+	ret, _, callErr := newProc.Call(800, 600)
 	if ret == 0 {
 		panic(fmt.Sprintf("servo_webview_new failed: %v", callErr))
 	}
@@ -133,8 +138,13 @@ package main
 #include <stdlib.h>
 
 typedef struct ServoWebView ServoWebView;
-ServoWebView *servo_webview_new(void);
-void servo_webview_load_url(ServoWebView *webview, const char *url);
+ServoWebView *servo_webview_new(uint32_t width, uint32_t height);
+int32_t servo_webview_load_url(ServoWebView *webview, const char *url);
+int32_t servo_webview_update(ServoWebView *webview);
+int32_t servo_webview_render(ServoWebView *webview, uint8_t *output, uintptr_t output_len);
+uint32_t servo_webview_width(const ServoWebView *webview);
+uint32_t servo_webview_height(const ServoWebView *webview);
+const char *servo_webview_last_error(const ServoWebView *webview);
 void servo_webview_free(ServoWebView *webview);
 */
 import "C"
@@ -144,7 +154,7 @@ import (
 )
 
 func main() {
-	view := C.servo_webview_new()
+	view := C.servo_webview_new(800, 600)
 	if view == nil {
 		panic("failed to create ServoWebView")
 	}
