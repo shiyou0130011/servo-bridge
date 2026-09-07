@@ -1,63 +1,150 @@
-use std::ffi::CStr;
-use std::os::raw::c_char;
+use std::ffi::{CStr, CString};
+use std::os::raw::{c_char, c_uchar};
+use std::rc::Rc;
 
-// Windows runners need Git long-path support to fetch Servo's WPT test files.
-#[cfg(not(target_os = "windows"))]
-use servo as _;
+use dpi::PhysicalSize;
+use euclid::{Point2D, Size2D};
+use servo::{
+    DeviceIntRect, RenderingContext, Servo, ServoBuilder, SoftwareRenderingContext, WebView,
+    WebViewBuilder,
+};
+use url::Url;
 
-// ==========================================
-// 1. 定義對外公開的結構體指標 (Opaque Pointer)
-// ==========================================
-// 這是標準的 FFI 作法：不讓外部直接看到內部結構，只透過一個指標操作。
 pub struct ServoWebView {
-    // 這裡未來可以放你的 Servo WebView 實體或相關控制代碼
-    url: String,
+    servo: Servo,
+    rendering_context: Rc<SoftwareRenderingContext>,
+    webview: WebView,
+    width: u32,
+    height: u32,
+    pixels: Vec<u8>,
+    last_error: Option<CString>,
 }
 
-// ==========================================
-// 2. 實作 C-ABI 導出函式 (外部語言可直接呼叫)
-// ==========================================
+fn set_error(webview: &mut ServoWebView, message: &str) {
+    webview.last_error = CString::new(message).ok();
+}
 
-/// 建立一個新的 WebView 實例
 #[no_mangle]
-pub extern "C" fn servo_webview_new() -> *mut ServoWebView {
-    let webview = ServoWebView {
-        url: String::from("about:blank"),
+pub extern "C" fn servo_webview_new(width: u32, height: u32) -> *mut ServoWebView {
+    if width == 0 || height == 0 {
+        return std::ptr::null_mut();
+    }
+
+    let rendering_context = match SoftwareRenderingContext::new(PhysicalSize::new(width, height))
+    {
+        Ok(context) => Rc::new(context),
+        Err(_) => return std::ptr::null_mut(),
     };
-    // 將 Box 轉換為裸指標 (Raw Pointer) 傳遞給外部語言
-    Box::into_raw(Box::new(webview))
+
+    let servo = ServoBuilder::default().build();
+    let url = Url::parse("about:blank").expect("about:blank is a valid URL");
+    let webview = WebViewBuilder::new(&servo, rendering_context.clone())
+        .url(url)
+        .build();
+
+    Box::into_raw(Box::new(ServoWebView {
+        servo,
+        rendering_context,
+        webview,
+        width,
+        height,
+        pixels: vec![0; (width as usize) * (height as usize) * 4],
+        last_error: None,
+    }))
 }
 
-/// 讓 WebView 載入指定的網址
-/// # Safety
-/// 外部傳入的 `webview` 指標必須有效，且 `url` 必須是合法的 Null-terminated C 字串。
 #[no_mangle]
 pub unsafe extern "C" fn servo_webview_load_url(
     webview: *mut ServoWebView,
     url: *const c_char,
-) {
-    if webview.is_null() || url.is_null() {
-        return;
+) -> i32 {
+    let Some(webview) = webview.as_mut() else {
+        return -1;
+    };
+    if url.is_null() {
+        set_error(webview, "URL 指標不可為空值");
+        return -2;
     }
 
-    // 將 C 字串轉換為 Rust 的 &str
-    let c_str = CStr::from_ptr(url);
-    if let Ok(rust_str) = c_str.to_str() {
-        let wv = &mut *webview;
-        wv.url = rust_str.to_string();
-        
-        // TODO: 這裡未來替換為真正的 Servo 載入網址邏輯
-        println!("Servo Bridge: Loading URL -> {}", wv.url);
+    let url = match CStr::from_ptr(url).to_str() {
+        Ok(url) => url,
+        Err(_) => {
+            set_error(webview, "URL 必須是合法 UTF-8");
+            return -3;
+        },
+    };
+    let url = match Url::parse(url) {
+        Ok(url) => url,
+        Err(_) => {
+            set_error(webview, "URL 格式無效");
+            return -4;
+        },
+    };
+
+    webview.webview.load(url);
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn servo_webview_update(webview: *mut ServoWebView) -> i32 {
+    let Some(webview) = webview.as_mut() else {
+        return -1;
+    };
+    webview.servo.spin_event_loop();
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn servo_webview_render(
+    webview: *mut ServoWebView,
+    output: *mut c_uchar,
+    output_len: usize,
+) -> i32 {
+    let Some(webview) = webview.as_mut() else {
+        return -1;
+    };
+    if output.is_null() || output_len < webview.pixels.len() {
+        set_error(webview, "輸出緩衝區太小");
+        return -2;
+    }
+
+    webview.webview.paint();
+    let rectangle = DeviceIntRect::from_origin_and_size(
+        Point2D::zero(),
+        Size2D::new(webview.width as i32, webview.height as i32),
+    );
+    let Some(image) = webview.rendering_context.read_to_image(rectangle) else {
+        set_error(webview, "目前尚未有可讀取的渲染畫面");
+        return -3;
+    };
+    webview.pixels.copy_from_slice(image.as_raw());
+    std::ptr::copy_nonoverlapping(webview.pixels.as_ptr(), output, webview.pixels.len());
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn servo_webview_width(webview: *const ServoWebView) -> u32 {
+    unsafe { webview.as_ref().map_or(0, |webview| webview.width) }
+}
+
+#[no_mangle]
+pub extern "C" fn servo_webview_height(webview: *const ServoWebView) -> u32 {
+    unsafe { webview.as_ref().map_or(0, |webview| webview.height) }
+}
+
+#[no_mangle]
+pub extern "C" fn servo_webview_last_error(webview: *const ServoWebView) -> *const c_char {
+    unsafe {
+        webview
+            .as_ref()
+            .and_then(|webview| webview.last_error.as_ref())
+            .map_or(std::ptr::null(), |error| error.as_ptr())
     }
 }
 
-/// 釋放 WebView 資源，避免記憶體洩漏
-/// # Safety
-/// 外部呼叫時必須確保這個指標只被釋放一次。
 #[no_mangle]
 pub unsafe extern "C" fn servo_webview_free(webview: *mut ServoWebView) {
     if !webview.is_null() {
-        // 將裸指標轉回 Box，當函式結束離開作用域時會自動釋放記憶體
-        let _ = Box::from_raw(webview);
+        drop(Box::from_raw(webview));
     }
 }

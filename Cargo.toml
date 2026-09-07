@@ -12,3 +12,6 @@ crate-type = ["cdylib"]
 [dependencies]
 # 官方 Servo 並沒有可直接使用的 0.1 crates.io 套件，改用固定版本的官方原始碼。
 servo = { git = "https://github.com/servo/servo.git", rev = "c038a19febfd7ab687de71caf04cfe180462b70f", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }
+dpi = "0.1.2"
+euclid = "0.22.14"
+url = "2.5.8"

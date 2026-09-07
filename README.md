@@ -8,6 +8,11 @@
 `ServoWebView` 指標，並更新其 URL。`servo_webview_load_url` 目前會記錄載入的
 URL；實際的 Servo 視窗、渲染與事件迴圈尚未接入。
 
+固定 Servo commit 的 embedding API 調查結果請參閱
+[`docs/servo-embedding-api.md`](docs/servo-embedding-api.md)。下一步應先以
+`SoftwareRenderingContext` 完成 Rust 端 headless framebuffer prototype，再
+設計供 Go/Ebiten 使用的 C ABI。
+
 ## 編譯
 
 官方 Servo 目前要求 Rust `1.97.1`。在已安裝 Rust 與 Cargo 的環境執行：
@@ -37,8 +42,13 @@ git config --global core.longpaths true
 ```c
 typedef struct ServoWebView ServoWebView;
 
-ServoWebView *servo_webview_new(void);
-void servo_webview_load_url(ServoWebView *webview, const char *url);
+ServoWebView *servo_webview_new(uint32_t width, uint32_t height);
+int32_t servo_webview_load_url(ServoWebView *webview, const char *url);
+int32_t servo_webview_update(ServoWebView *webview);
+int32_t servo_webview_render(ServoWebView *webview, uint8_t *output, uintptr_t output_len);
+uint32_t servo_webview_width(const ServoWebView *webview);
+uint32_t servo_webview_height(const ServoWebView *webview);
+const char *servo_webview_last_error(const ServoWebView *webview);
 void servo_webview_free(ServoWebView *webview);
 ```
 
@@ -80,7 +90,7 @@ var (
 )
 
 func newWebView() unsafe.Pointer {
-	ret, _, callErr := newProc.Call()
+	ret, _, callErr := newProc.Call(800, 600)
 	if ret == 0 {
 		panic(fmt.Sprintf("servo_webview_new failed: %v", callErr))
 	}
@@ -128,8 +138,13 @@ package main
 #include <stdlib.h>
 
 typedef struct ServoWebView ServoWebView;
-ServoWebView *servo_webview_new(void);
-void servo_webview_load_url(ServoWebView *webview, const char *url);
+ServoWebView *servo_webview_new(uint32_t width, uint32_t height);
+int32_t servo_webview_load_url(ServoWebView *webview, const char *url);
+int32_t servo_webview_update(ServoWebView *webview);
+int32_t servo_webview_render(ServoWebView *webview, uint8_t *output, uintptr_t output_len);
+uint32_t servo_webview_width(const ServoWebView *webview);
+uint32_t servo_webview_height(const ServoWebView *webview);
+const char *servo_webview_last_error(const ServoWebView *webview);
 void servo_webview_free(ServoWebView *webview);
 */
 import "C"
@@ -139,7 +154,7 @@ import (
 )
 
 func main() {
-	view := C.servo_webview_new()
+	view := C.servo_webview_new(800, 600)
 	if view == nil {
 		panic("failed to create ServoWebView")
 	}
