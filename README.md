@@ -55,6 +55,10 @@ void servo_webview_free(ServoWebView *webview);
 `ServoWebView` 是不透明型別，外部程式不可直接存取其欄位。`url` 必須是
 合法的 UTF-8、以 NUL 結尾的 C 字串。由 `servo_webview_new` 建立的指標必須
 交由 `servo_webview_free` 釋放，不能使用 Go、C 或其他執行環境的記憶體釋放器。
+`servo_webview_render` 會輸出每像素 4 bytes 的 RGBA8 緩衝區，緩衝區大小必須
+至少是 `width * height * 4`。成功回傳 `0`；失敗時回傳負值，並可透過
+`servo_webview_last_error` 取得目前錯誤訊息。成功呼叫 `load_url` 或 `update`
+後會清除前一次錯誤。
 
 ## Go 使用方式
 
@@ -135,17 +139,8 @@ package main
 
 /*
 #cgo windows LDFLAGS: -L./native -lservo_bridge
+#include "servo_bridge.h"
 #include <stdlib.h>
-
-typedef struct ServoWebView ServoWebView;
-ServoWebView *servo_webview_new(uint32_t width, uint32_t height);
-int32_t servo_webview_load_url(ServoWebView *webview, const char *url);
-int32_t servo_webview_update(ServoWebView *webview);
-int32_t servo_webview_render(ServoWebView *webview, uint8_t *output, uintptr_t output_len);
-uint32_t servo_webview_width(const ServoWebView *webview);
-uint32_t servo_webview_height(const ServoWebView *webview);
-const char *servo_webview_last_error(const ServoWebView *webview);
-void servo_webview_free(ServoWebView *webview);
 */
 import "C"
 
@@ -165,6 +160,9 @@ func main() {
 	C.servo_webview_load_url(view, url)
 }
 ```
+
+將 [`include/servo_bridge.h`](include/servo_bridge.h) 複製到 Go 專案的 cgo
+include 路徑，或在 `#cgo windows CFLAGS` 加入 `-I./native`。
 
 執行時 `servo_bridge.dll` 必須能被 Windows DLL 搜尋路徑找到。Windows 使用 cgo
 需要安裝可用的 GCC 工具鏈，例如 MinGW-w64。

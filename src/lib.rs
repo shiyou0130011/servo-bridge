@@ -5,10 +5,15 @@ use std::rc::Rc;
 use dpi::PhysicalSize;
 use euclid::{Point2D, Size2D};
 use servo::{
-    DeviceIntRect, RenderingContext, Servo, ServoBuilder, SoftwareRenderingContext, WebView,
-    WebViewBuilder,
+    DeviceIntRect, Servo, ServoBuilder, SoftwareRenderingContext, WebView, WebViewBuilder,
 };
 use url::Url;
+
+const ERR_NULL_WEBVIEW: i32 = -1;
+const ERR_INVALID_ARGUMENT: i32 = -2;
+const ERR_INVALID_URL: i32 = -3;
+const ERR_INVALID_UTF8: i32 = -4;
+const ERR_RENDER_UNAVAILABLE: i32 = -5;
 
 pub struct ServoWebView {
     servo: Servo,
@@ -29,6 +34,12 @@ pub extern "C" fn servo_webview_new(width: u32, height: u32) -> *mut ServoWebVie
     if width == 0 || height == 0 {
         return std::ptr::null_mut();
     }
+    let pixel_len = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|len| len.checked_mul(4));
+    let Some(pixel_len) = pixel_len else {
+        return std::ptr::null_mut();
+    };
 
     let rendering_context = match SoftwareRenderingContext::new(PhysicalSize::new(width, height))
     {
@@ -48,7 +59,7 @@ pub extern "C" fn servo_webview_new(width: u32, height: u32) -> *mut ServoWebVie
         webview,
         width,
         height,
-        pixels: vec![0; (width as usize) * (height as usize) * 4],
+        pixels: vec![0; pixel_len],
         last_error: None,
     }))
 }
@@ -59,25 +70,26 @@ pub unsafe extern "C" fn servo_webview_load_url(
     url: *const c_char,
 ) -> i32 {
     let Some(webview) = webview.as_mut() else {
-        return -1;
+        return ERR_NULL_WEBVIEW;
     };
+    webview.last_error = None;
     if url.is_null() {
         set_error(webview, "URL 指標不可為空值");
-        return -2;
+        return ERR_INVALID_ARGUMENT;
     }
 
     let url = match CStr::from_ptr(url).to_str() {
         Ok(url) => url,
         Err(_) => {
             set_error(webview, "URL 必須是合法 UTF-8");
-            return -3;
+            return ERR_INVALID_UTF8;
         },
     };
     let url = match Url::parse(url) {
         Ok(url) => url,
         Err(_) => {
             set_error(webview, "URL 格式無效");
-            return -4;
+            return ERR_INVALID_URL;
         },
     };
 
@@ -88,8 +100,9 @@ pub unsafe extern "C" fn servo_webview_load_url(
 #[no_mangle]
 pub unsafe extern "C" fn servo_webview_update(webview: *mut ServoWebView) -> i32 {
     let Some(webview) = webview.as_mut() else {
-        return -1;
+        return ERR_NULL_WEBVIEW;
     };
+    webview.last_error = None;
     webview.servo.spin_event_loop();
     0
 }
@@ -101,11 +114,12 @@ pub unsafe extern "C" fn servo_webview_render(
     output_len: usize,
 ) -> i32 {
     let Some(webview) = webview.as_mut() else {
-        return -1;
+        return ERR_NULL_WEBVIEW;
     };
+    webview.last_error = None;
     if output.is_null() || output_len < webview.pixels.len() {
         set_error(webview, "輸出緩衝區太小");
-        return -2;
+        return ERR_INVALID_ARGUMENT;
     }
 
     webview.webview.paint();
@@ -115,8 +129,12 @@ pub unsafe extern "C" fn servo_webview_render(
     );
     let Some(image) = webview.rendering_context.read_to_image(rectangle) else {
         set_error(webview, "目前尚未有可讀取的渲染畫面");
-        return -3;
+        return ERR_RENDER_UNAVAILABLE;
     };
+    if image.as_raw().len() != webview.pixels.len() {
+        set_error(webview, "渲染畫面大小與 WebView 不一致");
+        return ERR_RENDER_UNAVAILABLE;
+    }
     webview.pixels.copy_from_slice(image.as_raw());
     std::ptr::copy_nonoverlapping(webview.pixels.as_ptr(), output, webview.pixels.len());
     0
