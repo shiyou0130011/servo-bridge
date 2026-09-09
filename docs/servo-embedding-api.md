@@ -93,4 +93,3 @@ The next implementation step should be a Rust-only headless prototype based on
 the pinned servoshell `HeadlessWindow` and `SoftwareRenderingContext`. Once it
 can load a small HTML document and expose a stable framebuffer, the C ABI can
 be added for Go/Ebiten.
-
