@@ -5,7 +5,8 @@ use std::rc::Rc;
 use dpi::PhysicalSize;
 use euclid::{Point2D, Size2D};
 use servo::{
-    DeviceIntRect, Servo, ServoBuilder, SoftwareRenderingContext, WebView, WebViewBuilder,
+    DeviceIntRect, RenderingContext, Servo, ServoBuilder, SoftwareRenderingContext, WebView,
+    WebViewBuilder,
 };
 use url::Url;
 
