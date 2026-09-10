@@ -1,6 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_float, c_int, c_uchar, c_uint};
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 
 use dpi::PhysicalSize;
@@ -58,7 +58,7 @@ pub extern "C" fn servo_bridge_version() -> u32 {
 /// 成功時回傳不透明指標；`width` 或 `height` 為 0，或初始化失敗時回傳 NULL。
 #[no_mangle]
 pub extern "C" fn servo_webview_new(width: u32, height: u32) -> *mut ServoWebView {
-    let result = catch_unwind(|| {
+    let result = catch_unwind(AssertUnwindSafe(|| {
         if width == 0 || height == 0 {
             return std::ptr::null_mut();
         }
@@ -90,7 +90,7 @@ pub extern "C" fn servo_webview_new(width: u32, height: u32) -> *mut ServoWebVie
             pixels: vec![0; pixel_len],
             last_error: None,
         }))
-    });
+    }));
     result.unwrap_or(std::ptr::null_mut())
 }
 
@@ -99,11 +99,11 @@ pub extern "C" fn servo_webview_new(width: u32, height: u32) -> *mut ServoWebVie
 /// `webview` 為 NULL 時什麼都不做。
 #[no_mangle]
 pub unsafe extern "C" fn servo_webview_free(webview: *mut ServoWebView) {
-    let _ = catch_unwind(|| {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
         if !webview.is_null() {
             drop(Box::from_raw(webview));
         }
-    });
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -113,15 +113,17 @@ pub unsafe extern "C" fn servo_webview_free(webview: *mut ServoWebView) {
 /// 回傳目前渲染寬度（像素）。`webview` 為 NULL 時回傳 0。
 #[no_mangle]
 pub extern "C" fn servo_webview_width(webview: *const ServoWebView) -> u32 {
-    catch_unwind(|| unsafe { webview.as_ref().map_or(0, |wv| wv.width) })
-        .unwrap_or(0)
+    catch_unwind(AssertUnwindSafe(|| unsafe { 
+        webview.as_ref().map_or(0, |wv| wv.width) 
+    })).unwrap_or(0)
 }
 
 /// 回傳目前渲染高度（像素）。`webview` 為 NULL 時回傳 0。
 #[no_mangle]
 pub extern "C" fn servo_webview_height(webview: *const ServoWebView) -> u32 {
-    catch_unwind(|| unsafe { webview.as_ref().map_or(0, |wv| wv.height) })
-        .unwrap_or(0)
+    catch_unwind(AssertUnwindSafe(|| unsafe { 
+        webview.as_ref().map_or(0, |wv| wv.height) 
+    })).unwrap_or(0)
 }
 
 /// 回傳最後一次錯誤訊息的 C 字串指標。
@@ -130,13 +132,12 @@ pub extern "C" fn servo_webview_height(webview: *const ServoWebView) -> u32 {
 /// 呼叫端不可釋放此指標。
 #[no_mangle]
 pub extern "C" fn servo_webview_last_error(webview: *const ServoWebView) -> *const c_char {
-    catch_unwind(|| unsafe {
+    catch_unwind(AssertUnwindSafe(|| unsafe {
         webview
             .as_ref()
             .and_then(|wv| wv.last_error.as_ref())
             .map_or(std::ptr::null(), |e| e.as_ptr())
-    })
-    .unwrap_or(std::ptr::null())
+    })).unwrap_or(std::ptr::null())
 }
 
 // ---------------------------------------------------------------------------
@@ -152,7 +153,7 @@ pub unsafe extern "C" fn servo_webview_load_url(
     webview: *mut ServoWebView,
     url: *const c_char,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -177,7 +178,7 @@ pub unsafe extern "C" fn servo_webview_load_url(
         };
         webview.webview.load(url);
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -191,14 +192,14 @@ pub unsafe extern "C" fn servo_webview_load_url(
 /// 成功回傳 `0`；失敗回傳負值。
 #[no_mangle]
 pub unsafe extern "C" fn servo_webview_update(webview: *mut ServoWebView) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
         webview.last_error = None;
         webview.servo.spin_event_loop();
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -212,7 +213,7 @@ pub unsafe extern "C" fn servo_webview_render(
     output: *mut c_uchar,
     output_len: usize,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -238,7 +239,7 @@ pub unsafe extern "C" fn servo_webview_render(
         webview.pixels.copy_from_slice(image.as_raw());
         std::ptr::copy_nonoverlapping(webview.pixels.as_ptr(), output, webview.pixels.len());
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -257,7 +258,7 @@ pub unsafe extern "C" fn servo_webview_resize(
     width: u32,
     height: u32,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -280,7 +281,7 @@ pub unsafe extern "C" fn servo_webview_resize(
         webview.height = height;
         webview.pixels.resize(pixel_len, 0);
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -297,7 +298,7 @@ pub unsafe extern "C" fn servo_webview_mouse_move(
     x: c_float,
     y: c_float,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -306,7 +307,7 @@ pub unsafe extern "C" fn servo_webview_mouse_move(
             .webview
             .notify_input_event(InputEvent::MouseMove(MouseMoveEvent::new(point.into())));
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -336,7 +337,7 @@ pub unsafe extern "C" fn servo_webview_mouse_button(
     x: c_float,
     y: c_float,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -360,7 +361,7 @@ pub unsafe extern "C" fn servo_webview_mouse_button(
                 point.into(),
             )));
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -387,7 +388,7 @@ pub unsafe extern "C" fn servo_webview_key(
     modifiers: u32,
     pressed: c_int,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -430,7 +431,7 @@ pub unsafe extern "C" fn servo_webview_key(
             .webview
             .notify_input_event(InputEvent::Keyboard(keyboard_event));
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
 
@@ -446,7 +447,7 @@ pub unsafe extern "C" fn servo_webview_scroll(
     x: c_float,
     y: c_float,
 ) -> i32 {
-    catch_unwind(|| {
+    catch_unwind(AssertUnwindSafe(|| {
         let Some(webview) = webview.as_mut() else {
             return ERR_NULL_WEBVIEW;
         };
@@ -461,6 +462,6 @@ pub unsafe extern "C" fn servo_webview_scroll(
             .webview
             .notify_input_event(InputEvent::Wheel(WheelEvent::new(delta, point.into())));
         0
-    })
+    }))
     .unwrap_or(ERR_PANIC)
 }
