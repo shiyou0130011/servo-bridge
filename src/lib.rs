@@ -419,13 +419,25 @@ pub unsafe extern "C" fn servo_webview_key(
             KeyState::Up
         };
 
-        // Create keyboard event using the key and state
-        // Using the actual key value instead of Unidentified
-        let keyboard_event = KeyboardEvent::new(key, state);
+        // Servo's InputEvent::Keyboard wraps keyboard_types::KeyboardEvent
+        // We need to construct the inner keyboard_types event first
+        // For now, create a minimal event with just the key and state
+        // since the keyboard_types API may vary
+        let ktype_event = ::keyboard_types::KeyboardEvent {
+            key,
+            code: ::keyboard_types::Code::Unidentified,
+            location: ::keyboard_types::Location::Standard,
+            state,
+            modifiers: mods,
+            repeat: false,
+            is_composing: false,
+        };
+
+        let keyboard_event = InputEvent::Keyboard(KeyboardEvent::new(ktype_event));
 
         webview
             .webview
-            .notify_input_event(InputEvent::Keyboard(keyboard_event));
+            .notify_input_event(keyboard_event);
         0
     }))
     .unwrap_or(ERR_PANIC)
