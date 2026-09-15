@@ -14,6 +14,7 @@ crate-type = ["cdylib"]
 # Servo c038a19 requires the 0.8.x CSP API. Pin the pre-0.8.3 release because
 # 0.8.3 adds Destination::Text, which that Servo revision does not handle.
 content-security-policy = "=0.8.1"
+keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
 servo = { git = "https://github.com/servo/servo.git", rev = "c038a19febfd7ab687de71caf04cfe180462b70f", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }
 dpi = "0.1.2"
 euclid = "0.22.14"
