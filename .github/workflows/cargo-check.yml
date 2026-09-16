@@ -3,6 +3,9 @@ name: Check Servo bridge
 on:
   workflow_dispatch:
   pull_request:
+    paths:
+      - '**.rs'
+      - '**.h'
   push:
     branches:
       - main
