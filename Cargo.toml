@@ -1,6 +1,6 @@
 [package]
-name = "servo-lib"
-version = "0.1.0"
+name = "servo-bridge"
+version = "0.0.3"
 edition = "2021"
 license = "MPL-2.0"
 description = "提供給外部程式使用的 Servo C ABI 橋接函式庫"
