@@ -1,6 +1,6 @@
 [package]
 name = "servo-bridge"
-version = "0.0.3.1"
+version = "0.0.3-2"
 edition = "2021"
 license = "MIT"
 description = "提供給外部程式使用的 Servo C ABI 橋接函式庫"
