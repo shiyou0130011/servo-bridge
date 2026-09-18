@@ -16,6 +16,7 @@
  * 在載入 DLL 後第一件事應呼叫此函式，確認版本相容性。
  * 目前版本為 2。
  */
+#define SERVO_BRIDGE_ABI_VERSION 2
 SERVO_BRIDGE_API uint32_t servo_bridge_version(void);
 
 /* -------------------------------------------------------------------------

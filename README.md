@@ -163,8 +163,10 @@ go-app/
 package main
 
 /*
-#cgo windows CFLAGS:  -I./native
+#cgo CFLAGS: -I./native
 #cgo windows LDFLAGS: -L./native -lservo_bridge
+#cgo linux LDFLAGS: -L./native -lservo_bridge
+#cgo darwin LDFLAGS: -L./native -lservo_bridge
 #include "servo_bridge.h"
 #include <stdlib.h>
 */
@@ -175,7 +177,7 @@ import (
     "unsafe"
 
     "github.com/hajimehoshi/ebiten/v2"
-    "github.com/hajimehoshi/ebiten/v2/ebitenutil"
+    "github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -187,6 +189,8 @@ type Game struct {
     view    *C.ServoWebView
     img     *ebiten.Image
     buf     []byte
+    width   int
+    height  int
 }
 
 func NewGame() *Game {
@@ -208,6 +212,8 @@ func NewGame() *Game {
         view: view,
         img:  ebiten.NewImage(screenWidth, screenHeight),
         buf:  make([]byte, screenWidth*screenHeight*4),
+        width: screenWidth,
+        height: screenHeight,
     }
 }
 
@@ -215,9 +221,49 @@ func (g *Game) Update() error {
     // 驅動 Servo 事件迴圈
     C.servo_webview_update(g.view)
 
-    // 傳遞滑鼠位置
+    // 傳遞滑鼠位置與按鍵事件
     cx, cy := ebiten.CursorPosition()
     C.servo_webview_mouse_move(g.view, C.float(cx), C.float(cy))
+    for _, button := range []struct {
+        ebitenButton ebiten.MouseButton
+        servoButton  C.uint
+    }{
+        {ebiten.MouseButtonLeft, 0},
+        {ebiten.MouseButtonRight, 1},
+        {ebiten.MouseButtonMiddle, 2},
+    } {
+        if inpututil.IsMouseButtonJustPressed(button.ebitenButton) {
+            C.servo_webview_mouse_button(g.view, button.servoButton, 1,
+                C.float(cx), C.float(cy))
+        }
+        if inpututil.IsMouseButtonJustReleased(button.ebitenButton) {
+            C.servo_webview_mouse_button(g.view, button.servoButton, 0,
+                C.float(cx), C.float(cy))
+        }
+    }
+
+    // 傳遞常用文字鍵；應用程式可依需求擴充這個映射表。
+    for _, key := range []struct {
+        ebitenKey ebiten.Key
+        code      C.uint
+    }{
+        {ebiten.KeyA, 'A'}, {ebiten.KeyB, 'B'}, {ebiten.KeyC, 'C'},
+        {ebiten.KeyD, 'D'}, {ebiten.KeyE, 'E'}, {ebiten.KeyF, 'F'},
+        {ebiten.KeyG, 'G'}, {ebiten.KeyH, 'H'}, {ebiten.KeyI, 'I'},
+        {ebiten.KeyJ, 'J'}, {ebiten.KeyK, 'K'}, {ebiten.KeyL, 'L'},
+        {ebiten.KeyM, 'M'}, {ebiten.KeyN, 'N'}, {ebiten.KeyO, 'O'},
+        {ebiten.KeyP, 'P'}, {ebiten.KeyQ, 'Q'}, {ebiten.KeyR, 'R'},
+        {ebiten.KeyS, 'S'}, {ebiten.KeyT, 'T'}, {ebiten.KeyU, 'U'},
+        {ebiten.KeyV, 'V'}, {ebiten.KeyW, 'W'}, {ebiten.KeyX, 'X'},
+        {ebiten.KeyY, 'Y'}, {ebiten.KeyZ, 'Z'},
+    } {
+        if inpututil.IsKeyJustPressed(key.ebitenKey) {
+            C.servo_webview_key(g.view, key.code, 0, 1)
+        }
+        if inpututil.IsKeyJustReleased(key.ebitenKey) {
+            C.servo_webview_key(g.view, key.code, 0, 0)
+        }
+    }
 
     // 傳遞滾輪
     sx, sy := ebiten.Wheel()
@@ -225,6 +271,16 @@ func (g *Game) Update() error {
         C.servo_webview_scroll(g.view,
             C.float(sx*16), C.float(-sy*16),
             C.float(cx), C.float(cy))
+    }
+
+    // 讓 Ebiten 的視窗大小變更同步到 Servo。
+    width, height := ebiten.WindowSize()
+    if width > 0 && height > 0 && (width != g.width || height != g.height) {
+        if C.servo_webview_resize(g.view, C.uint(width), C.uint(height)) == 0 {
+            g.width, g.height = width, height
+            g.buf = make([]byte, width*height*4)
+            g.img = ebiten.NewImage(width, height)
+        }
     }
 
     return nil
@@ -239,17 +295,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
     }
 
     // 更新 Ebiten image（使用 image.NRGBA 避免每幀配置）
-    nrgba := &image.NRGBA{
-        Pix:    g.buf,
-        Stride: screenWidth * 4,
-        Rect:   image.Rect(0, 0, screenWidth, screenHeight),
-    }
+    nrgba := &image.NRGBA{Pix: g.buf, Stride: g.width * 4,
+        Rect: image.Rect(0, 0, g.width, g.height)}
     g.img.WritePixels(nrgba.Pix)
     screen.DrawImage(g.img, nil)
 }
 
 func (g *Game) Layout(ow, oh int) (int, int) {
-    return screenWidth, screenHeight
+    return g.width, g.height
 }
 
 func main() {
@@ -263,6 +316,10 @@ func main() {
     }
 }
 ```
+
+這個範例涵蓋初始化、ABI 版本檢查、URL 載入、每幀更新與渲染、滑鼠移動/
+按鍵、滾輪及視窗 resize。實際產品仍應補上完整的 Ebiten `Key`、修飾鍵與
+輸入法映射，並檢查每個 FFI 回傳值。
 
 ### Windows：使用 syscall（不需要 cgo）
 
