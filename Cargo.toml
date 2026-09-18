@@ -2,7 +2,7 @@
 name = "servo-bridge"
 version = "0.0.3.1"
 edition = "2021"
-license = "MPL-2.0"
+license = "MIT"
 description = "提供給外部程式使用的 Servo C ABI 橋接函式庫"
 
 [lib]

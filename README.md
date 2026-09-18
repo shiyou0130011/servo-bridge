@@ -1,5 +1,10 @@
 # servo-bridge
 
+# servo-bridge
+
+![版本](https://img.shields.io/badge/version-0.0.3-blue)
+![授權](https://img.shields.io/badge/license-MIT-green)
+
 本專案是一個以 Rust 撰寫的 C ABI 橋接函式庫，將固定版本的
 [Servo](https://github.com/servo/servo) 引擎納入建置，並輸出可由其他語言載入的
 動態函式庫，讓 C/C++、Go、C#、Python 等程式可以透過 FFI 呼叫 Servo 的
@@ -415,4 +420,4 @@ DYLD_LIBRARY_PATH="$PWD/native:$DYLD_LIBRARY_PATH" go run .
 - Ebiten 的 `WritePixels`（或舊版 `ReplacePixels`）接受 RGBA 格式的 `[]byte`，
   與 `servo_webview_render` 輸出格式相符，可直接傳入。
 - 避免在每幀建立新的 `ebiten.Image`；建議在 `NewGame` 時建立一次後重用。
-- 本專案使用 MPL-2.0 授權；Servo 及其相依元件的授權亦須一併遵守。
+- 本專案使用 MIT 授權；Servo 及其相依元件的授權亦須一併遵守。

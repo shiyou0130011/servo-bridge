@@ -83,13 +83,73 @@ embedding implementation must handle at least:
 thread-safe wake signal consumed by the host, or use a dedicated Servo thread
 and a command channel.
 
-## Consequence for this project
+## Implementation status
 
-The current `src/lib.rs` only stores a URL string and never calls
-`ServoBuilder`, creates a rendering context, creates a `WebView`, or pumps the
-Servo event loop. Its existing DLL is consequently not yet a Servo renderer.
+`src/lib.rs` now provides a complete C ABI embedding layer. The following have
+all been implemented against Servo c038a19:
 
-The next implementation step should be a Rust-only headless prototype based on
-the pinned servoshell `HeadlessWindow` and `SoftwareRenderingContext`. Once it
-can load a small HTML document and expose a stable framebuffer, the C ABI can
-be added for Go/Ebiten.
+| Component | API used | Status |
+|-----------|----------|--------|
+| Rendering context | `SoftwareRenderingContext::new(PhysicalSize)` | ✅ implemented |
+| Engine initialisation | `ServoBuilder::default().build()` | ✅ implemented |
+| WebView creation | `WebViewBuilder::new(&servo, ctx).url(url).build()` | ✅ implemented |
+| Event loop | `servo.spin_event_loop()` | ✅ implemented |
+| Framebuffer readback | `webview.paint()` + `rendering_context.read_to_image(rect)` | ✅ implemented |
+| Resize | `webview.resize(PhysicalSize)` | ✅ implemented |
+| Navigation | `webview.load(url)` | ✅ implemented |
+| Mouse move | `InputEvent::MouseMove(MouseMoveEvent::new(point))` | ✅ implemented |
+| Mouse button | `InputEvent::MouseButton(MouseButtonEvent::new(action, button, point))` | ✅ implemented |
+| Keyboard | `InputEvent::Keyboard(KeyboardEvent::new(keyboard_types::KeyboardEvent { … }))` | ✅ implemented |
+| Scroll / wheel | `InputEvent::Wheel(WheelEvent::new(WheelDelta { … }, point))` | ✅ implemented |
+
+### Key implementation notes
+
+**`SoftwareRenderingContext`** is wrapped in `Rc` and shared between `Servo`
+and `WebView`. After calling `webview.paint()`, the rendered pixels are read
+back via `rendering_context.read_to_image(DeviceIntRect)` which returns an
+`Option<image::RgbaImage>`. A `None` result means no frame has been composited
+yet (e.g. the page is still loading).
+
+**Keyboard events** require two layers. The inner event is constructed as a
+`keyboard_types::KeyboardEvent` struct with direct field initialisation:
+
+```rust
+let ktype_event = keyboard_types::KeyboardEvent {
+    key,
+    code: keyboard_types::Code::Unidentified,
+    location: keyboard_types::Location::Standard,
+    state,          // KeyState::Down / KeyState::Up
+    modifiers: mods,
+    repeat: false,
+    is_composing: false,
+};
+let event = InputEvent::Keyboard(KeyboardEvent::new(ktype_event));
+```
+
+**`WheelDelta`** is a plain struct with public fields (`x`, `y`, `z: f64`,
+`mode: WheelMode`); it is initialised directly without a constructor.
+
+**`DevicePoint`** (`euclid`-based) must be converted with `.into()` when passed
+to `MouseMoveEvent::new`, `MouseButtonEvent::new`, and `WheelEvent::new`.
+
+### C ABI surface
+
+The current ABI version is **2**. All functions are exported with `#[no_mangle]`
+and `extern "C"`. Panics are caught with `catch_unwind` so that a Rust panic
+never unwinds into C code; the caught panic returns `SERVO_ERR_PANIC` (`-99`).
+
+Error messages are stored as `CString` inside `ServoWebView` and are accessible
+via `servo_webview_last_error()`. The pointer remains valid as long as the
+`ServoWebView` is alive and no subsequent call has overwritten the error.
+
+### Known limitations
+
+- **Not thread-safe.** All calls must come from the same thread. No
+  synchronisation primitives protect the internal `ServoWebView` state.
+- **No IME support.** Keyboard input is limited to Unicode code points and the
+  four standard modifier keys (Shift, Ctrl, Alt, Meta).
+- **`about:blank` initial page.** `servo_webview_new` loads `about:blank`
+  before the caller's URL, so the first `servo_webview_render` call may return
+  `SERVO_ERR_RENDER` (`-5`) until the first real page frame is composited.
+- **No GPU path.** Only `SoftwareRenderingContext` is used; GPU-accelerated
+  rendering is not currently available through the C ABI.
