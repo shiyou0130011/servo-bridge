@@ -342,9 +342,9 @@ pub unsafe extern "C" fn servo_webview_mouse_button(
             return ERR_NULL_WEBVIEW;
         };
         let servo_button = match button {
-            0 => ServoMouseButton::Primary,
-            1 => ServoMouseButton::Secondary,
-            2 => ServoMouseButton::Auxiliary,
+            0 => ServoMouseButton::Left,
+            1 => ServoMouseButton::Right,
+            2 => ServoMouseButton::Middle,
             other => ServoMouseButton::Other(other as u16),
         };
         let action = if pressed != 0 {
