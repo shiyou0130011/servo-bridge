@@ -9,7 +9,7 @@
 1. 以 `keyboard_types::KeyboardEvent` 的欄位建立底層鍵盤事件。
 2. 將底層事件傳入 Servo 匯出的 `KeyboardEvent::new(ktype_event)`。
 3. 以 `InputEvent::Keyboard` 傳送至 WebView。
-**結論**: ✅ 已依照 Servo c038a19 的 API 建構鍵盤事件。
+**結論**: ✅ 已依照 Servo v0.5.0 的 API 建構鍵盤事件。
 
 ### 2. MouseMoveEvent.new()
 **位置**: `src/lib.rs` 308  
@@ -91,7 +91,7 @@ WheelDelta {
     mode: WheelMode::DeltaPixel,
 }
 ```
-**構造方式**: 結構體欄位直接初始化（Servo c038a19 的 `WheelDelta` 為公開欄位結構體，不需要工廠方法）  
+**構造方式**: 結構體欄位直接初始化（Servo v0.5.0 的 `WheelDelta` 為公開欄位結構體，不需要工廠方法）
 **狀態**: ✅ 已實作。
 
 ## 驗證方式
@@ -105,10 +105,10 @@ WheelDelta {
 - [x] MouseMoveEvent — `MouseMoveEvent::new(point.into())` 已在 CI 驗證。
 - [x] MouseButtonEvent — `MouseButtonEvent::new(action, button, point.into())` 已在 CI 驗證。
 - [x] WheelEvent — `WheelEvent::new(delta, point.into())` 已在 CI 驗證。
-- [x] WheelDelta — 欄位直接初始化，符合 Servo c038a19。
+- [x] WheelDelta — 欄位直接初始化，符合 Servo v0.5.0。
 
 ## 最終驗證狀態
 
 所有 Servo API 呼叫均已在 `src/lib.rs` 完整實作，並透過 GitHub Actions CI
-（`cargo-check.yml`）在 Servo c038a19 上驗證相容性。固定的 Servo commit
-（`c038a19`）確保 API 不會隨上游變動而失效。
+（`cargo-check.yml`）在 Servo v0.5.0 上驗證相容性。固定的 Servo release
+（`v0.5.0`）確保 API 不會隨上游變動而失效。

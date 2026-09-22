@@ -4,7 +4,7 @@ This document records the embedding API available at the Servo revision pinned
 by this project:
 
 ```text
-c038a19febfd7ab687de71caf04cfe180462b70f
+v0.5.0
 ```
 
 ## Entry point
@@ -86,7 +86,7 @@ and a command channel.
 ## Implementation status
 
 `src/lib.rs` now provides a complete C ABI embedding layer. The following have
-all been implemented against Servo c038a19:
+all been implemented against Servo v0.5.0:
 
 | Component | API used | Status |
 |-----------|----------|--------|
