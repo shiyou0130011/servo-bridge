@@ -1,5 +1,5 @@
 # servo-bridge 
-![版本](https://img.shields.io/badge/version-0.0.3-blue)
+![版本](https://img.shields.io/badge/version-0.0.3--2-blue)
 ![授權](https://img.shields.io/badge/License-MIT-red.svg?labelColor=white&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMzIxIiB3aWR0aD0iMzIxIj4KPGcgc3Ryb2tlLXdpZHRoPSIzNSIgc3Ryb2tlPSIjQTMxRjM0IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCA3NykiPgo8cGF0aCBkPSJtMTcuNSwwdjE2Nm01Ny0xNjZ2MTEzbTU3LTExM3YxNjZtNTctMTY2djMzbTU4LDIwdjExMyIvPgo8cGF0aCBkPSJtMTg4LjUsNTN2MTEzIiBzdHJva2U9IiM4QThCOEMiLz4KPHBhdGggZD0ibTIyOSwxNi41aDkyIiBzdHJva2Utd2lkdGg9IjMzIi8+CjwvZz4KPC9zdmc+Cg==)
 
 本專案是一個以 Rust 撰寫的 C ABI 橋接函式庫，將固定版本的
