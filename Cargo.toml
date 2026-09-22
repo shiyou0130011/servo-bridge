@@ -10,12 +10,12 @@ name = "servo_bridge"
 crate-type = ["cdylib"]
 
 [dependencies]
-# 官方 Servo 並沒有可直接使用的 0.1 crates.io 套件，改用固定版本的官方原始碼。
-# Servo c038a19 requires the 0.8.x CSP API. Pin the pre-0.8.3 release because
-# 0.8.3 adds Destination::Text, which that Servo revision does not handle.
+# 官方 Servo 並沒有可直接使用的 0.1 crates.io 套件，改用官方 release 原始碼。
+# Servo v0.5.0 requires the 0.8.x CSP API. Pin the pre-0.8.3 release because
+# 0.8.3 adds Destination::Text, which Servo v0.5.0 does not handle.
 content-security-policy = "=0.8.1"
 keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
-servo = { git = "https://github.com/servo/servo.git", rev = "c038a19febfd7ab687de71caf04cfe180462b70f", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }
+servo = { git = "https://github.com/servo/servo.git", tag = "v0.5.0", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }
 dpi = "0.1.2"
 euclid = "0.22.14"
 url = "2.5.8"
