@@ -16,6 +16,7 @@ crate-type = ["cdylib"]
 content-security-policy = "=0.8.1"
 keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
 servo = { git = "https://github.com/servo/servo.git", tag = "v0.5.0", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }
+surfman = { version = "0.13.0", features = ["chains"] }
 dpi = "0.1.2"
 euclid = "0.22.14"
 url = "2.5.8"

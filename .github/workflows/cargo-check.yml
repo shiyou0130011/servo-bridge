@@ -29,9 +29,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.97.1
+          targets: x86_64-pc-windows-msvc
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
       - name: Check library
-        run: cargo check --lib
+        run: cargo check --lib --target x86_64-pc-windows-msvc

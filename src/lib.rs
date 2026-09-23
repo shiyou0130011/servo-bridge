@@ -13,6 +13,8 @@ use servo::{
 };
 use url::Url;
 
+surfman::declare_surfman!();
+
 /// ABI 版本號，每次不相容 C ABI 變更時遞增。
 pub const SERVO_BRIDGE_ABI_VERSION: u32 = 2;
 
