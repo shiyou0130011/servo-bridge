@@ -13,6 +13,11 @@ on:
       - '**.rs'
       - '**.h'
 
+# 需要 pull-requests: write 才能在 pull request 上留言。
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   cargo-check:
     runs-on: windows-latest
@@ -34,4 +39,93 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Check library
-        run: cargo check --lib
+        shell: pwsh
+        # 同時把輸出顯示在 Job Log 並存到 check-output.log，供失敗留言時使用。
+        run: |
+          cargo check --lib 2>&1 | Tee-Object -FilePath check-output.log
+          exit $LASTEXITCODE
+
+      - name: Comment failure on pull request
+        # 只在「非 default branch」且前面步驟失敗時執行（push 觸發只會在 main，因此會被排除）。
+        if: failure() && (github.head_ref || github.ref_name) != github.event.repository.default_branch
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- cargo-check-failure -->';
+            const branch = context.payload.pull_request?.head?.ref
+              || context.ref.replace(/^refs\/heads\//, '');
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            // fork 的 pull request 無法用 GITHUB_TOKEN 留言，直接略過。
+            const pullRequest = context.payload.pull_request;
+            if (pullRequest && pullRequest.head.repo?.full_name !== pullRequest.base.repo?.full_name) {
+              core.warning('這是來自 fork 的 pull request，無法使用 GITHUB_TOKEN 留言，已略過。');
+              return;
+            }
+
+            // 找出這個分支對應的 open pull request。
+            let prNumber = pullRequest?.number;
+            if (!prNumber) {
+              const { data: pulls } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: 'open',
+                per_page: 100,
+              });
+              prNumber = pulls.find((pr) => pr.head.ref === branch)?.number;
+            }
+
+            if (!prNumber) {
+              core.info(`找不到分支 ${branch} 對應的 open pull request，跳過留言。`);
+              return;
+            }
+
+            // 讀取 cargo check 輸出，只取最後 200 行並截斷，避免超過 GitHub 留言長度上限。
+            let output = '(找不到 cargo check 輸出，請直接查看 Job Log。)';
+            try {
+              const lines = fs.readFileSync('check-output.log', 'utf8').split(/\r?\n/);
+              output = lines.slice(-200).join('\n').trim();
+              if (!output) {
+                output = '(cargo check 沒有任何輸出，請直接查看 Job Log。)';
+              } else if (output.length > 45000) {
+                output = `…（輸出過長，僅顯示最後一段）\n${output.slice(-45000)}`;
+              }
+            } catch (error) {
+              core.warning(`無法讀取 check-output.log：${error.message}`);
+            }
+
+            const body = [
+              marker,
+              '❌ **CI 失敗：Check Servo bridge（cargo check --lib）**',
+              '',
+              `- 分支：\`${branch}\``,
+              `- Workflow run：${runUrl}`,
+              '',
+              '<details><summary>cargo check 錯誤訊息（點擊展開）</summary>',
+              '',
+              '````text',
+              output,
+              '````',
+              '',
+              '</details>',
+            ].join('\n');
+
+            // 同一個 PR 只保留一則失敗留言，重跑時更新既有留言。
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              core.info(`已更新 PR #${prNumber} 的既有失敗留言。`);
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+              core.info(`已在 PR #${prNumber} 留言告知 CI 失敗。`);
+            }
