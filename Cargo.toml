@@ -16,6 +16,11 @@ crate-type = ["cdylib"]
 content-security-policy = "=0.8.1"
 keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
 servo = { git = "https://github.com/servo/servo.git", tag = "v0.5.0", default-features = false, features = ["baked-in-resources", "bundled_freetype", "js_jit"] }
+# Servo v0.5.0 將 rsa 鎖定為 =0.10.0-rc.18，其依賴 pkcs1 ^0.8.0-rc.4 會解析到
+# 不相容的 pkcs1 0.8.0-rc.5（RsaPrivateKey/RsaPublicKey 從生命週期參數改為泛型參數，
+# 導致 E0107 編譯錯誤）。此處強制對齊 Servo 官方 Cargo.lock 使用的 pkcs1 0.8.0-rc.4。
+# 等 Servo 升級到 rsa 0.10.0-rc.19 之後即可移除。
+pkcs1 = "=0.8.0-rc.4"
 surfman = { version = "0.13.0", features = ["chains"] }
 dpi = "0.1.2"
 euclid = "0.22.14"
